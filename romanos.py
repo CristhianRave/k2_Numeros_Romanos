@@ -1,15 +1,54 @@
-dicUnidades = {1:'I', 2:'II', 3:'III', 4:'IV', 5:'V', 6:'VI', 7:'VII', 8:'VIII', 9:'IX'}
-dicDecenas = {10:'X', 20:'XX', 30:'XXX', 40:'XL', 50:'L', 60:'LX', 70:'LXX', 80:'LXXX', 90:'XC'}
-dicCentenas = {100:'C', 200:'CC', 300:'CCC', 400:'CD', 500:'D', 600:'DC', 700:'DCC', 800:'DCCC', 900:'CM'}
-dicMillares = {1000:'M', 2000:'MM', 3000:'MMM'}
 valores = {'I':1, 'V': 5, 'X':10, 'L': 50, 'C':100, 'D': 500, 'M': 1000}
 valores5 = { 'V': 5,  'L': 50,  'D': 500 } 
 simbolosOrdenados = ['I', 'V', 'X', 'L', 'C', 'D', 'M']
 
-def romano_a_arabigo(numRomano):
-    numArabigo = 0
+rangos = {
+    0: {1: 'I', 5 : 'V', 'next': 'X'},
+    1: {1: 'X', 5 : 'L', 'next': 'C'},
+    2: {1: 'C', 5 : 'D', 'next': 'M'},
+    3: {1: 'M', 'next': ''}
+}
+
+def numParentesis(cadena):
+    num = 0
+    for c in cadena:
+        if c == '(':
+            num += 1
+        else:
+            break
+    return num
+
+def contarParentesis(numRomano):
+    res = []
+    grupoParentesis = numRomano.split(')')
+
+    ix = 0
+    while ix < len(grupoParentesis):
+        grupo = grupoParentesis[ix]
+        numP = numParentesis(grupo)
+        if numP > 0:
+            for j in range(ix+1, ix+numP):
+                if grupoParentesis[j] != '':
+                    return 0 #Explota o Falla
+            ix += numP - 1
+
+        if len(grupo[numP:]) > 0:
+            res.append((numP, grupo[numP:]))
+
+        ix += 1
+        
+    #Este if sirve para tratar los casos de parentesis mal formateados
+    for i in range(len(res)-1):
+        if res[i][0] <= res[i+1][0]:
+            return 0
+
+    return res
+
+def romano_individual(numRomano):
     numRepes = 1
     ultimoCaracter = ''
+    numArabigo = 0
+
     for letra in numRomano: 
         #incrementamos el valor del número arábigo con el valor numérico del símbolo romano
         if letra in valores:
@@ -22,22 +61,16 @@ def romano_a_arabigo(numRomano):
                 numRepes += 1
                 if letra in valores5:
                     return 0
-
                 if numRepes > 3:
                     return 0
-
-
             elif valores[ultimoCaracter] < valores[letra]:
                 if numRepes > 1: # No permite repeticiones en las restas
                     return 0
-
                 if ultimoCaracter in valores5: #No permite restas de valores de 5 (5, 50, 500)
                     return 0
-
                 distancia = simbolosOrdenados.index(letra) - simbolosOrdenados.index(ultimoCaracter) #No permite que se resten unidades de más de un orden
                 if distancia > 2:
                     return 0
-
                 numArabigo -= valores[ultimoCaracter]*2
                 numRepes = 1
         else:  #si el simbolo romano no es permitido devolvemos error (0)
@@ -47,45 +80,44 @@ def romano_a_arabigo(numRomano):
 
     return numArabigo
 
-# Descomponer valor en dígitos separando millares, centenas, decenas y unidades
+
+def romano_a_arabigo(numRomano):
+    numArabigoTotal = 0
+    res = contarParentesis(numRomano)
+
+    for elemento in res:
+        romano = elemento[1]
+        factor = pow(10, 3 * elemento[0])
+
+        numArabigoTotal += romano_individual(romano) * factor
+
+    return numArabigoTotal
+
+
+def invertir(cad):
+    return cad[::-1]
+
+    res = ''
+    for i in range(len(cad)-1, -1, -1):
+        res+= cad[i]
+    return res
+
 def arabigo_a_romano(valor):
-    if valor >= 4000:
-        return 0
- 
-    valor = str(valor)
+    #cad = invertir(str(valor))
+    cad = str(valor)[::-1]
+    res = ''
 
-    millares = '0'
-    centenas = '0'
-    decenas  = '0'
-    unidades = '0'   
+    for i in range(len(cad)-1, -1, -1):
+        digit = int(cad[i])
+        if digit <= 3:
+            res += digit*rangos[i][1]
+        elif digit == 4:
+            res += (rangos[i][1]+rangos[i][5])
+        elif digit == 5:
+            res += rangos[i][5]
+        elif digit < 9:
+            res += (rangos[i][5]+rangos[i][1]*(digit-5))
+        else:
+            res += rangos[i][1]+rangos[i]['next']
 
-    if len(valor) == 1:
-        unidades = int(valor)
-    elif len(valor) == 2:
-        decenas =  int(valor[0]) *10
-        unidades = int(valor[1])
-    elif len(valor) == 3:
-        centenas = int(valor[0]) *100
-        decenas =  int(valor[1]) *10
-        unidades = int(valor[2])
-    elif len(valor) == 4:
-        millares = int(valor[0]) *1000
-        centenas = int (valor[1]) *100
-        decenas =  int(valor[2])*10
-        unidades = int(valor[3])
-                
-    else:
-        return 0
-
-#2.- Procesar uno a uno estos dígitos y transformarlos en su forma romana
-
-    millares.append (dicMillares[(millares)])    
-    centenas.append (dicCentenas[(centenas)])
-    decenas.append  (dicDecenas[(decenas)])
-    unidades.append  (dicUnidades[(unidades)])
-    
-#3.- Ir concatenando cada resultado en una cadena completa
-    numRomano = millares + centenas + decenas + unidades
-
-#4.- Devolverla
-    return numRomano
+    return res
